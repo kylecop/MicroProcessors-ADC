@@ -1,3 +1,5 @@
+
+
 .org 0x200 ; create 7SEG CODE TABLE at address 0x100 (word address, which will be byte address of 200)
 data:.DB     0b01000000,0b01111001,0b0100100,0b00110000,0b00011001,0b00010010,0b00000010,0b01111000,0b00000000,0b00011000,0b00000001,0b00000010,0b00000100,0b00001000,0b00010000,0b00100000
 //            0   ,   1      ,   2     ,     3    ,    4     ,    5     ,    6     ,    7     ,    8     ,     9    , A digit 1, B digit 2, C digit 3, D digit 4, E digit 5, F digit 6
@@ -14,25 +16,35 @@ start:
     LDI R16, 0xFF ; load 1's into R16
 	OUT DDRB, R16 ; output 1's to configure DDRB as "output" port
 	OUT DDRC, R16 ; output 1's to configure DDRC as "output" port
+	LDI R16, 0x00
+	OUT DDRD, R16
+	LDI R16,0x87
+	STS ADCSRA, R16
+	LDI R16,0xD6
+	STS ADMUX,R16
 
-	ldi r23,0x01 ;seconds one's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
-	ldi r24,0x02 ;seconds ten's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
-	ldi r25,0x03 ;minutes one's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
-	ldi r26,0x04 ;minutes ten's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
-	ldi r27,0x05 ;hours ones's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
-	ldi r28,0x06 ;hours ten's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
+
+	ldi r23,0x00 ;seconds one's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
+	ldi r24,0x00 ;seconds ten's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
+	ldi r25,0x00 ;minutes one's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
+	ldi r26,0x00 ;minutes ten's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
+	ldi r27,0x00 ;hours ones's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
+	ldi r28,0x00 ;hours ten's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
 	ldi r31,0x0a	; Preload binary 00001010 into r31
 	ldi r17,0x00
 
 
 tog:
 
+	call READ_ADC
+	call KEEP_POLING
+	/*
 	LDI R22, 1;
+	
 	
 	LOP_1:LDI R21, 1;
 		LOP_2:LDI R20, 1;
 			LOP_3:
-				call DisplayAll
 
 				DEC R20;
 			BRNE LOP_3;
@@ -40,9 +52,22 @@ tog:
 		BRNE LOP_2;
 		DEC R22;
 	BRNE LOP_1;
-
+	*/
 	JMP tog; go to tog
+READ_ADC:
+	sbi ADCSRA,ADSC
+	ret
 
+KEEP_POLING:
+	SBIS ADCSRA,ADIF
+	RJMP KEEP_POLING
+	SBI ADCSRA,ADIF
+	IN R24,ADCL
+	OUT PORTD,R16
+	IN R25, ADCH
+	OUT PORTB,R16
+	call DisplayAll
+	RJMP READ_ADC
 
 LoadZRegister:
 	ldi ZL, low(2*data)
