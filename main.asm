@@ -1,5 +1,3 @@
-
-
 .org 0x200 ; create 7SEG CODE TABLE at address 0x100 (word address, which will be byte address of 200)
 data:.DB     0b01000000,0b01111001,0b0100100,0b00110000,0b00011001,0b00010010,0b00000010,0b01111000,0b00000000,0b00011000,0b00000001,0b00000010,0b00000100,0b00001000,0b00010000,0b00100000
 //            0   ,   1      ,   2     ,     3    ,    4     ,    5     ,    6     ,    7     ,    8     ,     9    , A digit 1, B digit 2, C digit 3, D digit 4, E digit 5, F digit 6
@@ -15,7 +13,7 @@ data:.DB     0b01000000,0b01111001,0b0100100,0b00110000,0b00011001,0b00010010,0b
 start:
     LDI R16, 0xFF ; load 1's into R16
 	OUT DDRB, R16 ; output 1's to configure DDRB as "output" port
-	OUT DDRC, R16 ; output 1's to configure DDRC as "output" port
+	OUT DDRD, R16 ; output 1's to configure DDRC as "output" port
 
 
 	ldi r23,0x00 ;seconds one's place, load r16 with BCD(hex) value of the digit to be converted (digit 7 is used as an example)
@@ -29,7 +27,7 @@ start:
 	
     ;ddrx controls the if a pin is in/out, if the pins corresponding bit in the ddr is 1 it's an out, if it's 0 its an in
     ldi r16, 0x00 ; set r16 = 0000 0000
-    out ddrD, r16 ;set all c pins as input
+    out ddrC, r16 ;set all d pins as input
     ldi r16, 0xFF ; set r16 = 1111 1111
     //out ddrd, r16 ;set all d pins as output
     //out ddrb, r16 ;set all b pins as output
@@ -39,16 +37,12 @@ start:
     ldi r16, LOW(RAMEND)
     out SPL, r16
 
-tog:
-
-	JMP tog; go to tog
-	
 prog:
     ;----------------initialise adc
 
-    sbi PORTD,5
+    sbi PORTC,5
 setADC:
-
+	call DisplayAll
     lds r16,0x00
     STS ADCSRA,R16
 
@@ -65,13 +59,12 @@ keepPolling:
     lds r24,ADCL    
     lds r25,ADCH
 
-    sbi PORTD,2
+    sbi PORTC,2
     ldi r18,2       ;r18 is used by delay- setting it to 2 doubles the delay, as opposed to if it was set to 1
-    call delay
-    cbi PORTD,2
+    //call delay
+    cbi PORTC,2
     ldi r18,2
-    call delay
-	call DisplayAll
+    //call delay
     rjmp prog
 
 delay:
@@ -104,7 +97,7 @@ TurnOnDigit:
 	ldi ZH, high(2*data)
 	add zl,r29 ; add the BCD  value to be converted to low byte of 7SEG CODE TABLE to create an offset numerically equivalent to BCD value 
 	lpm r18,z ; load z into r17 from program memory from7SEG CODE TABLE using modified z register as pointer
-	out PORTC, r18 // put on line adjacent to out portb
+	out PORTD, r18 // put on line adjacent to out portb
 	ret
 	
 LoopDelay:
