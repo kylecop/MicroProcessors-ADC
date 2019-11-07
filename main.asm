@@ -28,47 +28,52 @@ start:
     ;ddrx controls the if a pin is in/out, if the pins corresponding bit in the ddr is 1 it's an out, if it's 0 its an in
     ldi r16, 0x00 ; set r16 = 0000 0000
     out ddrC, r16 ;set all d pins as input
-    ldi r16, 0xFF ; set r16 = 1111 1111
-    //out ddrd, r16 ;set all d pins as output
-    //out ddrb, r16 ;set all b pins as output
+    
+	ldi r16,0x87
+	sts adcsra,r16
+	ldi r16,0xc0
+	sts admux,r16
 
-    ldi r16, HIGH(RAMEND)
-    out SPH, r16
-    ldi r16, LOW(RAMEND)
-    out SPL, r16
+adcInit:
+    ldi r16, 0b01100000   ; Voltage Reference: AVcc with external capacitor at AREF pin
+    sts ADMUX, r16        ; Enable ADC Left Adjust Result
+                          ; Analog Channel: ADC0
 
-prog:
-    ;----------------initialise adc
+    ldi r16, 0b10000101   ; Enable ADC
+    sts ADCSRA, r16       ; ADC Prescaling Factor: 32
 
-    sbi PORTC,5
-setADC:
+    ret
+
+adcRead:
+    ldi r16, 0b01000000   ; Set ADSC flag to Trigger ADC Conversion process
+    lds r17, ADCSRA       ;
+    or  r17, r16          ;
+    sts  ADCSRA, r17      ;
+    ret
+
+adcWait:
+    lds r17, ADCSRA       ; Observe the ADIF flag, it gets set by hardware when ADC conversion completes
+    sbrs r17, 4           ;
+
+    jmp adcWait           ; Keep checking until the flag is set by hardware
+
+    ldi r16, 0b00010000   ; Set the flag again to signal 'ready-to-be-cleared' by hardware
+    lds r17, ADCSRA       ;
+    or  r17, r16          ;
+    sts  ADCSRA, r17      ;
+    ret
+
+mainLoop:
+    call adcRead
+    call adcWait
+    lds r18, ADCL  ; Must read ADCL first, and ADCH after that
+    lds r24, ADCH
+	call convert
 	call DisplayAll
-    lds r16,0x00
-    STS ADCSRA,R16
+	rjmp mainLoop
 
-    ldi r16,0xC3    ;11000011 - 1 enable ADC, 1 start ADC conversion, 0 don't run continuously, 00 ?, 011 
-    sts ADCSRA,r16
-    ldi r16,0x25    ;00100101 - 00 external ref voltage, 1 left justified, 00101 Pin5 set to input
-    sts admux,r16
-
-keepPolling:
-    lds R16,ADCSRA
-    sbrs R16,4 ;wait for conversion to complete, when conversion is complete the 4th bit in the ADCSRA is set to true therefor skipping the r jump because of sbrs
-    jmp keepPolling
-
-    lds r24,ADCL    
-    lds r25,ADCH
-
-    sbi PORTC,2
-    ldi r18,2       ;r18 is used by delay- setting it to 2 doubles the delay, as opposed to if it was set to 1
-    //call delay
-    cbi PORTC,2
-    ldi r18,2
-	call Convert
-	rjmp prog
-    //call delay
 Convert:
-	ldi r30, 254
+	mov r30, r24
 	ldi r20, 100
 	call Div
 	mov r25, r21
