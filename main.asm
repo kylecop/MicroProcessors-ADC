@@ -68,7 +68,7 @@ keepPolling:
 	rjmp prog
     //call delay
 Convert:
-	mov r30, r24
+	ldi r30, 254
 	ldi r20, 100
 	call Div
 	mov r25, r21
