@@ -1,4 +1,8 @@
-.org 0x200 ; create 7SEG CODE TABLE at address 0x100 (word address, which will be byte address of 200)
+
+
+
+
+	.org 0x200 ; create 7SEG CODE TABLE at address 0x100 (word address, which will be byte address of 200)
 data:.DB     0b01000000,0b01111001,0b0100100,0b00110000,0b00011001,0b00010010,0b00000010,0b01111000,0b00000000,0b00011000,0b00000001,0b00000010,0b00000100,0b00001000,0b00010000,0b00100000
 //            0   ,   1      ,   2     ,     3    ,    4     ,    5     ,    6     ,    7     ,    8     ,     9    , A digit 1, B digit 2, C digit 3, D digit 4, E digit 5, F digit 6
 // test change in the atmel studio :)
@@ -28,52 +32,37 @@ start:
     ;ddrx controls the if a pin is in/out, if the pins corresponding bit in the ddr is 1 it's an out, if it's 0 its an in
     ldi r16, 0x00 ; set r16 = 0000 0000
     out ddrC, r16 ;set all d pins as input
-    
-	ldi r16,0x87
-	sts adcsra,r16
-	ldi r16,0xc0
-	sts admux,r16
+    ldi r16, 0xFF ; set r16 = 1111 1111
+    //out ddrd, r16 ;set all d pins as output
+    //out ddrb, r16 ;set all b pins as output
 
-adcInit:
-    ldi r16, 0b01100000   ; Voltage Reference: AVcc with external capacitor at AREF pin
-    sts ADMUX, r16        ; Enable ADC Left Adjust Result
-                          ; Analog Channel: ADC0
+    ldi r16, HIGH(RAMEND)
+    out SPH, r16
+    ldi r16, LOW(RAMEND)
+    out SPL, r16
+	
+	LDI	R16,0xC0		;1.1V Vref, ADC0 single ended
+	STS	ADMUX, R16		;input, right-justified data
 
-    ldi r16, 0b10000101   ; Enable ADC
-    sts ADCSRA, r16       ; ADC Prescaling Factor: 32
-
-    ret
-
-adcRead:
-    ldi r16, 0b01000000   ; Set ADSC flag to Trigger ADC Conversion process
-    lds r17, ADCSRA       ;
-    or  r17, r16          ;
-    sts  ADCSRA, r17      ;
-    ret
-
-adcWait:
-    lds r17, ADCSRA       ; Observe the ADIF flag, it gets set by hardware when ADC conversion completes
-    sbrs r17, 4           ;
-
-    jmp adcWait           ; Keep checking until the flag is set by hardware
-
-    ldi r16, 0b00010000   ; Set the flag again to signal 'ready-to-be-cleared' by hardware
-    lds r17, ADCSRA       ;
-    or  r17, r16          ;
-    sts  ADCSRA, r17      ;
-    ret
-
-mainLoop:
-    call adcRead
-    call adcWait
-    lds r18, ADCL  ; Must read ADCL first, and ADCH after that
-    lds r24, ADCH
-	call convert
+READ_ADC:
 	call DisplayAll
-	rjmp mainLoop
+	LDI	R16,0x87|(1<<ADSC)
+	STS	ADCSRA,R16		;start conversion
+	ret
+KEEP_POLLING:			;wait for end of conversion 
+	LDS	R16,ADCSRA
+	SBRS R16,ADIF		;is it end of conversion yet?
+	RJMP KEEP_POLLING	;keep polling end of conversion	
+	LDI	R16,(1<<ADIF)
+	STS	ADCSRA,R16		;write 1 to clear ADIF flag
+	LDS	R16,ADCL		;YOU HAVE TO READ ADCL FIRST
+	LDS	R16,ADCH		;READ ADCH AFTER ADCL 
+	
+	call Convert
+	ret 
 
 Convert:
-	mov r30, r24
+	ldi r30, 254
 	ldi r20, 100
 	call Div
 	mov r25, r21
