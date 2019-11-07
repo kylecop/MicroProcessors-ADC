@@ -46,9 +46,9 @@ setADC:
     lds r16,0x00
     STS ADCSRA,R16
 
-    ldi r16,0xC3
+    ldi r16,0xC3    ;11000011 - 1 enable ADC, 1 start ADC conversion, 0 don't run continuously, 00 ?, 011 
     sts ADCSRA,r16
-    ldi r16,0x23    ;the 2 sets the bits to be left justified
+    ldi r16,0x25    ;00100101 - 00 external ref voltage, 1 left justified, 00101 Pin5 set to input
     sts admux,r16
 
 keepPolling:
@@ -64,8 +64,27 @@ keepPolling:
     //call delay
     cbi PORTC,2
     ldi r18,2
+	call Convert
+	rjmp prog
     //call delay
-    rjmp prog
+Convert:
+	mov r30, r24
+	ldi r20, 100
+	call Div
+	mov r25, r21
+	ldi r20, 10
+	call Div
+	mov r24, r21
+	mov r23, r30
+	ret
+Div:
+ldi r21, 0
+loop:
+	sub r30, r20
+	inc r21
+	cp r30, r20
+	brsh loop
+	ret
 
 delay:
     loop1_new:
